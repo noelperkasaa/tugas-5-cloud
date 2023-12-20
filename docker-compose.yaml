@@ -1,41 +1,61 @@
-
-version: '3'
+version: '3.8'
 
 services:
   wp:
     image: wordpress
-    depends_on:
-      - db
+    ports:
+      - "8080:80"
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_USER: ${DB_USER}
       WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
       WORDPRESS_DB_NAME: ${DB_NAME}
-
+    volumes:
+      - wordpress:/var/www/html
+    networks:
+      - app-network
+  
   db:
-    image: mariadb:latest
+    image: mysql
+    ports:
+      - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - app-network
 
-  pma:
+  pma: 
     image: phpmyadmin/phpmyadmin
-    depends_on:
-      - db
+    ports:
+      - 8081:80
     environment:
       PMA_HOST: db
-      PMA_USER: ${DB_USER}
-      PMA_PASSWORD: ${DB_PASSWORD}
-      PMA_DB: ${DB_NAME}
+      PMA_PORT: 3306
+      PMA_ABSOLUTE_URI: localhost:8081
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    links:
+      - db
+    restart: always
+    networks:
+      - app-network
 
   nginx:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: nginx
     ports:
       - "80:80"
-    depends_on:
-      - wp
-      - pma
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - wordpress:/var/www/html
+    networks:
+      - app-network
+
+volumes: 
+  wordpress: 
+  db:
+
+networks:
+  app-network:
+    driver: bridge
